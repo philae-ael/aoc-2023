@@ -125,27 +125,20 @@ fn part2(input: &str) -> u64 {
                 for rm in range_maps {
                     let mut new_v = vec![];
                     for i in v {
-                        match (
-                            rm.src_range.contains(&i.start),
-                            rm.src_range.contains(&(i.end - 1)),
-                            i.contains(&rm.src_range.start),
-                        ) {
-                            (true, true, _) => w.push(rm.map(i.start)..rm.map(i.end)),
-                            (true, false, _) => {
-                                w.push(rm.map(i.start)..rm.map(rm.src_range.end));
-                                new_v.push(rm.src_range.end..i.end);
-                            }
-                            (false, true, _) => {
-                                w.push(rm.map(rm.src_range.start)..rm.map(i.end));
-                                new_v.push(i.start..rm.src_range.start);
-                            }
-                            (false, false, true) => {
-                                w.push(rm.map(rm.src_range.start)..rm.map(rm.src_range.end));
-                                new_v.push(i.start..rm.src_range.start);
-                                new_v.push(rm.src_range.end..i.end);
-                            }
-                            (false, false, false) => new_v.push(i),
-                        };
+                        let beginning = i.start..u64::min(i.end, rm.src_range.start);
+                        let inner = u64::max(i.start, rm.src_range.start)
+                            ..u64::min(i.end, rm.src_range.end);
+                        let end = u64::max(i.start, rm.src_range.end)..i.end;
+
+                        if !beginning.is_empty() {
+                            new_v.push(beginning);
+                        }
+                        if !inner.is_empty() {
+                            w.push(rm.map(inner.start)..rm.map(inner.end));
+                        }
+                        if !end.is_empty() {
+                            new_v.push(end);
+                        }
                     }
                     v = new_v;
                 }
