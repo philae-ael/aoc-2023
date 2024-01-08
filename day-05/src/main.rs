@@ -15,31 +15,27 @@ impl RangeConverter {
     }
 }
 
-struct RangeList {
-    l: Vec<Range<u64>>,
-}
-
-impl RangeList {
-    pub fn simplify(&mut self) {
-        self.l.sort_by_key(|x| x.start);
-        let mut v = vec![];
-        if self.l.is_empty() {
-            return;
-        }
-
-        let mut current_range = self.l[0].clone();
-        for i in 1..self.l.len() {
-            if current_range.end > self.l[i].start {
-                current_range.end = self.l[i].end.max(current_range.end);
-            } else {
-                v.push(current_range);
-                current_range = self.l[i].clone();
-            }
-        }
-        v.push(current_range);
-
-        self.l = v;
+pub fn simplify_rangelist(l: &mut Vec<Range<u64>>) {
+    if l.is_empty() {
+        return;
     }
+
+    l.sort_by_key(|x| x.start);
+    let mut v = vec![];
+
+    let mut it = l.iter().cloned();
+    let mut current_range = it.next().unwrap();
+    for i in it {
+        if current_range.end > i.start {
+            current_range.end = i.end.max(current_range.end);
+        } else {
+            v.push(current_range);
+            current_range = i;
+        }
+    }
+    v.push(current_range);
+
+    *l = v;
 }
 
 #[derive(Debug)]
@@ -86,34 +82,7 @@ fn parse(input: &str) -> Almanac {
 }
 
 fn part1(input: &str) -> u64 {
-    let almanac = dbg!(parse(input));
-
-    let mut next = "seed".to_owned();
-    let mut items = almanac.seeds.clone();
-    while let Some((to, range_maps)) = almanac.maps.get(&next) {
-        next = to.to_owned();
-
-        items = items
-            .into_iter()
-            .map(|item| {
-                for rc in range_maps {
-                    if rc.src_range.contains(&item) {
-                        return rc.map(item);
-                    }
-                }
-
-                item
-            })
-            .to_vec();
-
-        dbg!(to, &items);
-    }
-
-    items.into_iter().min().unwrap()
-}
-
-fn part1_2(input: &str) -> u64 {
-    let almanac = dbg!(parse(input));
+    let almanac = parse(input);
 
     almanac
         .seeds
@@ -140,18 +109,15 @@ fn part2(input: &str) -> u64 {
     let almanac = parse(input);
 
     let mut next = "seed".to_owned();
-    let mut ranges = RangeList {
-        l: almanac
-            .seeds
-            .chunks_exact(2)
-            .map(|chunk| (chunk[0]..chunk[0] + chunk[1]))
-            .to_vec(),
-    };
+    let mut ranges = almanac
+        .seeds
+        .chunks_exact(2)
+        .map(|chunk| (chunk[0]..chunk[0] + chunk[1]))
+        .to_vec();
     while let Some((to, range_maps)) = almanac.maps.get(&next) {
         next = to.to_owned();
 
-        ranges.l = ranges
-            .l
+        ranges = ranges
             .into_iter()
             .flat_map(|item| {
                 let mut v = vec![item];
@@ -188,10 +154,10 @@ fn part2(input: &str) -> u64 {
             })
             .to_vec();
 
-        ranges.simplify();
+        simplify_rangelist(&mut ranges);
     }
 
-    ranges.l[0].start
+    ranges[0].start
 }
 
 fn main() -> std::io::Result<()> {
@@ -213,7 +179,6 @@ fn main() -> std::io::Result<()> {
 #[cfg(test)]
 mod tests {
     use crate::part1;
-    use crate::part1_2;
     use crate::part2;
 
     #[test]
@@ -253,45 +218,6 @@ humidity-to-location map:
 56 93 4";
         let expected = 35;
         assert_eq!(part1(input), expected);
-    }
-
-    #[test]
-    fn p1_1() {
-        let input = "seeds: 79 14 55 13
-
-seed-to-soil map:
-50 98 2
-52 50 48
-
-soil-to-fertilizer map:
-0 15 37
-37 52 2
-39 0 15
-
-fertilizer-to-water map:
-49 53 8
-0 11 42
-42 0 7
-57 7 4
-
-water-to-light map:
-88 18 7
-18 25 70
-
-light-to-temperature map:
-45 77 23
-81 45 19
-68 64 13
-
-temperature-to-humidity map:
-0 69 1
-1 0 69
-
-humidity-to-location map:
-60 56 37
-56 93 4";
-        let expected = 35;
-        assert_eq!(part1_2(input), expected);
     }
 
     #[test]
